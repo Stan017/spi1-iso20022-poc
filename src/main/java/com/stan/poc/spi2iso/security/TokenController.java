@@ -74,7 +74,12 @@ public class TokenController {
                                     example = "{\"error\":\"invalid_client\"}")))
             }
     )
-    @PostMapping(value = "/oauth/token", consumes = "application/x-www-form-urlencoded")
+    // Sin restriccion de "consumes": Spring puebla @RequestParam tanto desde el body
+    // form-urlencoded (RFC 6749 - un cliente real) como desde query params (asi es
+    // como Swagger UI 3 envia estos parametros, ya que OpenAPI 3 no tiene forma de
+    // modelar "campos de un formulario POST" distinta de "parametro de query" para
+    // un @RequestParam simple) - evita un 401 confuso al probar desde Swagger.
+    @PostMapping("/oauth/token")
     public ResponseEntity<?> token(
             @Parameter(description = "Debe ser `client_credentials`", example = "client_credentials")
             @RequestParam("grant_type") String grantType,

@@ -47,6 +47,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/oauth/token").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // Sin esto, un error (ej. 415) en una ruta publica se redispacha a /error,
+                        // que por defecto exige autenticacion, y termina mostrandose como un 401
+                        // generico que oculta el codigo/causa real del error.
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/payment-execution/payment-instructions/**")
                             .hasAuthority("SCOPE_transferencias:write")
                         .requestMatchers(HttpMethod.GET, "/payment-execution/payment-instructions/**")
