@@ -51,7 +51,7 @@ import org.springframework.context.annotation.Configuration;
         scheme = "bearer",
         bearerFormat = "JWT",
         description = "Token JWT obtenido via POST /oauth/token (grant_type=client_credentials). " +
-                "Demo: client_id=banco-pichincha-poc-client / client_secret=demo-secret-cambiar-en-uso-real"
+                "Demo: client_id=poc-demo-client / client_secret=demo-secret-cambiar-en-uso-real"
 )
 public class OpenApiConfig {
 }

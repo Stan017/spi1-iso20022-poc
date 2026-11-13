@@ -21,12 +21,12 @@ class JwtServiceTest {
     @Test
     void emiteYValidaUnTokenConSusScopes() {
         JwtService service = nuevoServicio(900);
-        String token = service.issueAccessToken("banco-pichincha-poc-client",
+        String token = service.issueAccessToken("poc-demo-client",
                 List.of("transferencias:read", "transferencias:write"));
 
         JwtService.JwtClaims claims = service.validate(token);
 
-        assertEquals("banco-pichincha-poc-client", claims.subject());
+        assertEquals("poc-demo-client", claims.subject());
         assertTrue(claims.hasScope("transferencias:read"));
         assertTrue(claims.hasScope("transferencias:write"));
         assertFalse(claims.hasScope("algo:inexistente"));

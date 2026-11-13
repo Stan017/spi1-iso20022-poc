@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/Stan017/spi1-iso20022-poc/actions/workflows/ci.yml/badge.svg)](https://github.com/Stan017/spi1-iso20022-poc/actions/workflows/ci.yml)
 
-> **Note on code language**: inline comments and Javadoc throughout the source code are written in Spanish, as this project was built for a technical portfolio application to a Ecuadorian financial institution (Banco Pichincha). The API contracts, field names, and all public interfaces are in English.
+![Swagger UI running against the live API](docs/images/swagger-ui.jpg)
+
+> **Note on code language**: inline comments and Javadoc throughout the source code are written in Spanish, as this project was built as part of a technical portfolio for integration architecture roles in the Ecuadorian financial sector. The API contracts, field names, and all public interfaces are in English.
 
 Portfolio project built to demonstrate **integration architecture** competencies (TOGAF 9.2, BIAN, ITIL, COBIT) applied to a real, active regulatory problem in the Ecuadorian financial system: the migration of SPI1 flat files from the Banco Central del Ecuador (BCE) to ISO 20022 messaging.
 
@@ -50,7 +52,7 @@ BIAN (Banking Industry Architecture Network) organizes banking capabilities into
 | Control | No | out of scope — suspend/resume/cancel |
 | Exchange / Notify | No | out of scope — async events between Service Domains |
 
-This is, honestly, an **architectural/conceptual** mapping: it covers the two correct domains, the correct interaction pattern (Initiate in Payment Execution → hand-off to Clearing and Settlement → Retrieve the result), and uses real BIAN nomenclature in the routes — but it does not implement the full formal BIAN data model (Service Operations with their official XSD/OpenAPI schema, additional Behavior Qualifiers, nor separate Service Domains with their own persistence). For a technical interview, this demonstrates understanding of the framework and how to apply it, not that the full BIAN standard was implemented.
+This is, honestly, an **architectural/conceptual** mapping: it covers the two correct domains, the correct interaction pattern (Initiate in Payment Execution → hand-off to Clearing and Settlement → Retrieve the result), and uses real BIAN nomenclature in the routes — but it does not implement the full formal BIAN data model (Service Operations with their official XSD/OpenAPI schema, additional Behavior Qualifiers, nor separate Service Domains with their own persistence). This demonstrates understanding of the framework and how to apply it, not that the full BIAN standard was implemented.
 
 ## How to run
 
@@ -107,7 +109,7 @@ API routes are protected with Spring Security. To call them, first request a tok
 ```bash
 curl -s -X POST http://localhost:8080/oauth/token \
   -d "grant_type=client_credentials" \
-  -d "client_id=banco-pichincha-poc-client" \
+  -d "client_id=poc-demo-client" \
   -d "client_secret=demo-secret-cambiar-en-uso-real" \
   -d "scope=transferencias:read transferencias:write"
 ```
@@ -179,7 +181,7 @@ When starting the app, Spring Boot may print a warning about a generated passwor
 
 ## Scope, sources and assumptions (read before citing this)
 
-This PoC was built being deliberately honest about its limits, because that is part of what makes it defensible in front of a technical interviewer:
+This PoC was built being deliberately honest about its limits, because that is part of what makes it defensible under technical scrutiny:
 
 1. **The exact layout of the real SPI1 file is not public.** The BCE does not publish the field-position/width format used today by Ecuadorian banks in any openly accessible source. This project defines a **reasonable delimited format** (see `Spi1Parser.java`) with the same business fields mandated by the regulations cited above, in order to demonstrate the end-to-end transformation engine.
 
@@ -236,4 +238,4 @@ docs/governance.md   Layer 5 — TOGAF ADM mapping, migration roadmap, risk matr
 
 ## Author
 
-Stan — built as portfolio evidence for the Integration Architect role application, Banco Pichincha (Ecuador).
+Stan — portfolio project demonstrating integration architecture competencies (TOGAF, BIAN, ITIL, COBIT) applied to a real, active regulatory problem in the Ecuadorian financial system.

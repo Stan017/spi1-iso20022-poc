@@ -50,7 +50,7 @@ public class TokenController {
                     Emite un Bearer token JWT (HMAC-SHA256, TTL configurable, por defecto 900 s).
 
                     Credenciales de demo (definidas en `application.properties`):
-                    - `client_id`: `banco-pichincha-poc-client`
+                    - `client_id`: `poc-demo-client`
                     - `client_secret`: `demo-secret-cambiar-en-uso-real`
                     - `grant_type`: `client_credentials`
                     - `scope`: `transferencias:read transferencias:write` (ambos, o solo uno)
@@ -83,7 +83,7 @@ public class TokenController {
     public ResponseEntity<?> token(
             @Parameter(description = "Debe ser `client_credentials`", example = "client_credentials")
             @RequestParam("grant_type") String grantType,
-            @Parameter(description = "ID del cliente OAuth2", example = "banco-pichincha-poc-client")
+            @Parameter(description = "ID del cliente OAuth2", example = "poc-demo-client")
             @RequestParam("client_id") String clientId,
             @Parameter(description = "Secreto del cliente OAuth2", example = "demo-secret-cambiar-en-uso-real")
             @RequestParam("client_secret") String clientSecret,
