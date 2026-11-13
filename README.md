@@ -1,144 +1,104 @@
-# PoC: Motor de transformación SPI1 → ISO 20022 (Ecuador)
+# PoC: SPI1 → ISO 20022 Transformation Engine (Ecuador)
 
 [![CI](https://github.com/Stan017/spi1-iso20022-poc/actions/workflows/ci.yml/badge.svg)](https://github.com/Stan017/spi1-iso20022-poc/actions/workflows/ci.yml)
 
+> **Note on code language**: inline comments and Javadoc throughout the source code are written in Spanish, as this project was built for a technical portfolio application to a Ecuadorian financial institution (Banco Pichincha). The API contracts, field names, and all public interfaces are in English.
 
-Proyecto de portafolio técnico, construido para demostrar competencias de
-**arquitectura de integración** (TOGAF 9.2, BIAN, ITIL, COBIT) aplicadas a un
-problema regulatorio real y vigente del sistema financiero ecuatoriano: la
-migración de los archivos planos SPI1 del Banco Central del Ecuador (BCE) hacia
-mensajería ISO 20022.
+Portfolio project built to demonstrate **integration architecture** competencies (TOGAF 9.2, BIAN, ITIL, COBIT) applied to a real, active regulatory problem in the Ecuadorian financial system: the migration of SPI1 flat files from the Banco Central del Ecuador (BCE) to ISO 20022 messaging.
 
-> Este es un **proof of concept de portafolio**, no software de producción ni una
-> implementación oficial o certificada por el Banco Central del Ecuador. Ver la
-> sección "Alcance, fuentes y supuestos" antes de citarlo como evidencia técnica.
+> This is a **portfolio proof of concept**, not production software nor an official implementation certified by the Banco Central del Ecuador. Read the "Scope, sources and assumptions" section before citing it as technical evidence.
 
-## El problema de negocio
+## The business problem
 
-- **Resolución BCE-GG-007-2026** (marzo 2026): exige ISO 20022 como estándar de
-  mensajería para pagos en tiempo real hasta USD 15,000. Plazo para la mensajería
-  interna entre participantes de la red de pagos: **30 de noviembre de 2026**.
-- **Circular BCE-GMPSN-2026-008-C / 013-C**: el formato de archivo SPI1 (v2) agrega
-  un campo obligatorio nuevo — cédula/RUC/pasaporte del ordenante — por el Art. 52
-  de la Ley de Prevención de Lavado de Activos (LAFT). Vigente desde el **6 de
-  julio de 2026**.
+- **BCE Resolution GG-007-2026** (March 2026): mandates ISO 20022 as the messaging standard for real-time payments up to USD 15,000. Deadline for inter-participant messaging within the payment network: **November 30, 2026**.
+- **BCE Circular GMPSN-2026-008-C / 013-C**: the SPI1 file format (v2) adds a new mandatory field — the payer's national ID / RUC / passport — per Art. 52 of the Anti-Money Laundering Law (LAFT). Effective **July 6, 2026**.
 
-Las instituciones financieras ecuatorianas deben pasar de un modelo de **archivos
-planos por lotes, en 3 cortes diarios**, a mensajería **ISO 20022 en tiempo real**
-— un cambio arquitectónico, no solo de formato.
+Ecuadorian financial institutions must move from a **batch flat-file model with 3 daily settlement windows** to **real-time ISO 20022 messaging** — an architectural change, not merely a format change.
 
-## Qué hace este PoC
+## What this PoC does
 
-Implementa el motor de transformación de punta a punta:
+Implements the end-to-end transformation engine:
 
 ```
-archivo SPI1 (plano) → Spi1Parser → Pacs008Validator → Pacs008Mapper
-   → pacs.008.001.08 (XML real, vía JAXB) → SwitchGatewaySimulator
-   → pacs.002.001.10 (XML real, vía JAXB) → TransactionLog (H2, con trazabilidad T510/T515/T520/T530)
+SPI1 file (flat) → Spi1Parser → Pacs008Validator → Pacs008Mapper
+   → pacs.008.001.08 (real XML via JAXB) → SwitchGatewaySimulator
+   → pacs.002.001.10 (real XML via JAXB) → TransactionLog (H2, with T510/T515/T520/T530 timestamps)
 ```
 
-Expuesto también como API REST (Spring Boot) y con 3 escenarios de demo
-(aceptado / rechazado / timeout) en `examples/spi1-demo.txt`.
+Also exposed as a REST API (Spring Boot) with 3 demo scenarios (accepted / rejected / timeout) in `examples/spi1-demo.txt`.
 
-## Alineación con BIAN
+## BIAN alignment
 
-BIAN (Banking Industry Architecture Network) organiza la banca en **Service
-Domains**. Este PoC mapea su pipeline a los dos dominios relevantes para una
-transferencia interbancaria, y lo refleja directamente en el código — no solo en el
-documento de diseño:
+BIAN (Banking Industry Architecture Network) organizes banking capabilities into **Service Domains**. This PoC maps its pipeline to the two relevant domains for an interbank transfer, reflected directly in the code — not just in the design document:
 
-| Service Domain BIAN | Rol en este PoC | Código |
+| BIAN Service Domain | Role in this PoC | Code |
 |---|---|---|
-| **Payment Execution** | Recibe la instrucción SPI1, la valida, la transforma a ISO 20022 y gestiona su ciclo de vida hasta entregarla a liquidación. | `PaymentExecutionController`, `Spi1ToIso20022Service` |
-| **Clearing and Settlement** | Liquida o rechaza la instrucción ya transformada y devuelve el resultado (pacs.002). | `ClearingAndSettlementController`, `SwitchGatewaySimulator` |
+| **Payment Execution** | Receives the SPI1 instruction, validates it, transforms it to ISO 20022, and manages its lifecycle until it is handed to settlement. | `PaymentExecutionController`, `Spi1ToIso20022Service` |
+| **Clearing and Settlement** | Clears or rejects the transformed instruction and returns the result (pacs.002). | `ClearingAndSettlementController`, `SwitchGatewaySimulator` |
 
-**Control Record**: BIAN define, para cada Service Domain, un Control Record — el
-objeto de negocio central cuyo ciclo de vida se rastrea. En este PoC es
-`TransactionLog`, identificado por su `numeroInstruccion` (expuesto en la API como
-`crId`, Control Record Id). Por simplicidad de PoC, Payment Execution y Clearing and
-Settlement comparten el mismo Control Record en vez de tener cada uno el suyo
-correlacionado — en una arquitectura real serían instancias separadas.
+**Control Record**: BIAN defines a Control Record for each Service Domain — the central business object whose lifecycle is tracked. In this PoC it is `TransactionLog`, identified by its `numeroInstruccion` (exposed in the API as `crId`, Control Record Id). For PoC simplicity, Payment Execution and Clearing and Settlement share the same Control Record instead of having correlated separate ones — in a real architecture these would be separate instances.
 
-**Behavior Qualifiers** (las acciones estándar que BIAN define sobre un Control
-Record) cubiertos por las rutas REST:
+**BIAN Behavior Qualifiers** (standard actions on a Control Record) covered by the REST routes:
 
-| Behavior Qualifier | Implementado | Dónde |
+| Behavior Qualifier | Implemented | Where |
 |---|---|---|
-| **Initiate** | Sí | `POST /payment-execution/payment-instructions/initiate` (+ variante `initiate-batch`) |
-| **Retrieve** | Sí | `GET .../retrieve` en ambos dominios |
-| Update | No | fuera de alcance — modificar una instrucción ya iniciada |
-| Control | No | fuera de alcance — suspender/reanudar/cancelar |
-| Exchange / Notify | No | fuera de alcance — eventos asíncronos entre Service Domains |
+| **Initiate** | Yes | `POST /payment-execution/payment-instructions/initiate` (+ `initiate-batch` variant) |
+| **Retrieve** | Yes | `GET .../retrieve` on both domains |
+| Update | No | out of scope — modifying an already-initiated instruction |
+| Control | No | out of scope — suspend/resume/cancel |
+| Exchange / Notify | No | out of scope — async events between Service Domains |
 
-Esto es, honestamente, un mapeo **arquitectónico/conceptual**: cubre los dos
-dominios correctos, el patrón de interacción correcto (Initiate en Payment
-Execution → entrega a Clearing and Settlement → Retrieve del resultado), y usa la
-nomenclatura real de BIAN en las rutas — pero no implementa el modelo de datos
-formal completo de BIAN (Service Operations con su esquema XSD/OpenAPI oficial,
-Behavior Qualifiers adicionales, ni Service Domains separados con su propia
-persistencia). Para una entrevista técnica, esto demuestra que se entiende el
-framework y se sabe aplicarlo, no que se implementó el estándar BIAN completo.
+This is, honestly, an **architectural/conceptual** mapping: it covers the two correct domains, the correct interaction pattern (Initiate in Payment Execution → hand-off to Clearing and Settlement → Retrieve the result), and uses real BIAN nomenclature in the routes — but it does not implement the full formal BIAN data model (Service Operations with their official XSD/OpenAPI schema, additional Behavior Qualifiers, nor separate Service Domains with their own persistence). For a technical interview, this demonstrates understanding of the framework and how to apply it, not that the full BIAN standard was implemented.
 
-## Cómo correrlo
+## How to run
 
 ```bash
 mvn spring-boot:run -Ddemo.file=examples/spi1-demo.txt
 ```
 
-Esto procesa el archivo de ejemplo al arrancar (verás el resultado de las 3
-transacciones en consola) y deja la API levantada en `http://localhost:8080`.
+This processes the sample file on startup (you will see the result of the 3 transactions in the console) and leaves the API running at `http://localhost:8080`.
 
-Para correr solo las pruebas:
+To run tests only:
 
 ```bash
 mvn test
 ```
 
-### Integración continua
+### Continuous integration
 
-`.github/workflows/ci.yml` corre `mvn verify` (compilación + pruebas) en cada
-push/PR a `main` vía GitHub Actions. Esto importa especialmente para este
-proyecto: se construyó en un entorno sin salida de red hacia Maven Central, así
-que nunca pudo compilarse "en caliente" durante el desarrollo — este pipeline es
-la primera verificación real, y la que debe quedar en verde antes de presentarlo
-como evidencia técnica.
+`.github/workflows/ci.yml` runs `mvn verify` (compile + test) on every push/PR to `main` via GitHub Actions. This is especially important for this project: it was built in an environment without network access to Maven Central, so it was never compiled "live" during development — this pipeline is the first real verification, and the one that must stay green before presenting it as technical evidence.
 
 ### Endpoints
 
-Las rutas siguen la nomenclatura de **Service Domain** y **Behavior Qualifier** de
-BIAN (ver la sección "Alineación con BIAN" más abajo) en vez de nombres genéricos:
+Routes follow the BIAN **Service Domain** and **Behavior Qualifier** naming convention (see "BIAN alignment" above) instead of generic names:
 
-| Método | Ruta | Service Domain BIAN | Behavior Qualifier |
+| Method | Route | BIAN Service Domain | Behavior Qualifier |
 |---|---|---|---|
-| POST | `/payment-execution/payment-instructions/initiate` (body: texto plano, una línea SPI1) | Payment Execution | Initiate |
-| POST | `/payment-execution/payment-instructions/initiate-batch?ruta=examples/spi1-demo.txt` | Payment Execution | Initiate (variante batch, conveniencia de demo) |
+| POST | `/payment-execution/payment-instructions/initiate` (body: plain text, one SPI1 line) | Payment Execution | Initiate |
+| POST | `/payment-execution/payment-instructions/initiate-batch?ruta=examples/spi1-demo.txt` | Payment Execution | Initiate (batch convenience variant) |
 | GET | `/payment-execution/payment-instructions/{crId}/retrieve` | Payment Execution | Retrieve |
-| GET | `/payment-execution/payment-instructions/retrieve` | Payment Execution | Retrieve (todas) |
+| GET | `/payment-execution/payment-instructions/retrieve` | Payment Execution | Retrieve (all) |
 | GET | `/clearing-and-settlement/settlement-status/{crId}/retrieve` | Clearing and Settlement | Retrieve |
-| — | `/h2-console` (JDBC URL `jdbc:h2:mem:spi1poc`, user `sa`) | — | consola H2 para inspeccionar el log |
+| — | `/swagger-ui.html` | — | Swagger UI (OpenAPI 3, no auth required) |
+| — | `/h2-console` (JDBC URL `jdbc:h2:mem:spi1poc`, user `sa`) | — | H2 console for inspecting the transaction log |
 
-`{crId}` es el Control Record Id — en este PoC, el `numeroInstruccion` de la
-instrucción SPI1 (ver `TransactionLog.java` y la sección BIAN abajo).
+`{crId}` is the Control Record Id — in this PoC, the `numeroInstruccion` from the SPI1 instruction (see `TransactionLog.java` and the BIAN section above).
 
-Todas requieren el header `Authorization: Bearer <token>` (ver la sección
-Seguridad) excepto `/oauth/token` y `/h2-console`.
+All routes require the `Authorization: Bearer <token>` header (see Security section) except `/oauth/token`, `/swagger-ui.html`, `/v3/api-docs`, and `/h2-console`.
 
-### Los 3 escenarios de la demo
+### The 3 demo scenarios
 
-1. **`INS-0001`** — transacción válida → el switch simulado responde `ACSC` (liquidada).
-2. **`INS-0002`** — monto `999.99` (regla de demo) → el switch simulado responde `RJCT`,
-   motivo `AM02`, con el `pacs.002` correspondiente.
-3. **`INS-0003`** — referencia con la palabra `TIMEOUT` → el switch simulado no responde,
-   para demostrar el manejo de ese caso en el log de trazabilidad.
+1. **`INS-0001`** — valid transaction → the simulated switch responds `ACSC` (settled).
+2. **`INS-0002`** — amount `999.99` (demo rule) → the simulated switch responds `RJCT`, reason `AM02`, with the corresponding `pacs.002`.
+3. **`INS-0003`** — reference containing the word `TIMEOUT` → the simulated switch does not respond, to demonstrate timeout handling in the traceability log.
 
-## Seguridad (Capa 4)
+## Security (Layer 4)
 
-El PoC implementa dos mecanismos de seguridad, alineados con el diseño documentado:
+The PoC implements two security mechanisms, aligned with the documented design:
 
-### 1. OAuth 2.0 (flujo `client_credentials`) + JWT
+### 1. OAuth 2.0 (`client_credentials` flow) + JWT
 
-Las rutas de la API quedan protegidas con Spring Security. Para llamarlas hay que
-pedir primero un token:
+API routes are protected with Spring Security. To call them, first request a token:
 
 ```bash
 curl -s -X POST http://localhost:8080/oauth/token \
@@ -148,11 +108,10 @@ curl -s -X POST http://localhost:8080/oauth/token \
   -d "scope=transferencias:read transferencias:write"
 ```
 
-Devuelve un `access_token` (JWT) que se usa como `Authorization: Bearer <token>` en
-las llamadas a `/api/**`:
+Returns an `access_token` (JWT) used as `Authorization: Bearer <token>` in subsequent calls:
 
 ```bash
-TOKEN="<pegar el access_token de arriba>"
+TOKEN="<paste the access_token from above>"
 
 curl -s http://localhost:8080/payment-execution/payment-instructions/retrieve \
   -H "Authorization: Bearer $TOKEN"
@@ -164,145 +123,95 @@ curl -s http://localhost:8080/clearing-and-settlement/settlement-status/INS-0001
   -H "Authorization: Bearer $TOKEN"
 ```
 
-- Las rutas `GET .../retrieve` exigen el scope `transferencias:read`.
-- Las rutas `POST .../initiate*` exigen el scope `transferencias:write`.
-- Sin token, o con un token inválido/expirado/con el scope equivocado → `401`/`403`.
+- `GET .../retrieve` routes require scope `transferencias:read`.
+- `POST .../initiate*` routes require scope `transferencias:write`.
+- No token, or an invalid/expired/wrong-scope token → `401`/`403`.
 
-**Límite honesto**: `TokenController` y `JwtService` simulan la *mecánica* de un
-Authorization Server OAuth2 (emisión de `access_token` con scopes y expiración,
-validación Bearer), implementada a mano con JDK + Jackson — no hay JWKS, no hay
-rotación de llaves, la firma es simétrica (HS256) y el secreto vive en
-`application.properties`. En un entorno real del Banco, el Authorization Server
-sería un componente dedicado (Keycloak, Okta, IdP corporativo) con firma asimétrica
-y rotación de llaves — ver el comentario en `JwtService.java` para el detalle.
+**Honest limitation**: `TokenController` and `JwtService` simulate the *mechanics* of an OAuth2 Authorization Server (issuing an `access_token` with scopes and expiration, Bearer validation), implemented from scratch with JDK + Jackson — no JWKS, no key rotation, symmetric signing (HS256), and the secret lives in `application.properties`. In a real bank environment, the Authorization Server would be a dedicated component (Keycloak, Okta, corporate IdP) with asymmetric signing and key rotation — see the comment in `JwtService.java` for details.
 
-### 2. mTLS (perfil opcional `mtls`)
+### 2. mTLS (optional `mtls` profile)
 
-Para probar la autenticación mutua por certificado (canal API Gateway ↔ switch del
-BCE, como está documentado en el diseño):
+To test mutual certificate authentication (API Gateway ↔ BCE switch channel, as documented in the design):
 
 ```bash
 chmod +x scripts/generar-certificados-mtls.sh
-./scripts/generar-certificados-mtls.sh   # genera certificados autofirmados de demo
+./scripts/generar-certificados-mtls.sh   # generates self-signed demo certificates
 mvn spring-boot:run -Dspring-boot.run.profiles=mtls
 ```
 
-La API queda en `https://localhost:8443`, exigiendo que el cliente presente el
-certificado generado (`certs/cliente.p12`). No se activa por defecto porque
-requiere generar esos certificados primero. Ver `application-mtls.properties`
-para el detalle y las limitaciones (mTLS aquí es solo transporte; la identificación
-de la operación sigue viviendo en el token OAuth2/JWT).
+The API runs at `https://localhost:8443`, requiring the client to present the generated certificate (`certs/cliente.p12`). Not active by default because it requires generating those certificates first. See `application-mtls.properties` for details and limitations (mTLS here is transport only; operation identity still lives in the OAuth2/JWT token).
 
-### 3. Enmascaramiento de datos LAFT
+### 3. LAFT data masking
 
-`LaftMaskingUtil` centraliza el enmascaramiento del número de identificación/cuenta
-que se imprime en los logs de demo (el dato completo sí se persiste en
-`TransactionLog`, igual que en un sistema real sujeto a retención de 10 años por el
-Art. 52 LAFT — el enmascaramiento es solo para lo que se muestra en consola).
+`LaftMaskingUtil` centralizes masking of identification numbers/account numbers printed in the demo logs (the full data is persisted in `TransactionLog`, just as a real system subject to the 10-year retention requirement under Art. 52 LAFT would do — masking applies only to what is printed in the console, not to what is stored).
 
-### Nota sobre el arranque
+### Note on startup
 
-Al levantar la app sin este perfil de seguridad personalizado completamente
-"limpio", Spring Boot puede imprimir un warning de una contraseña generada para un
-usuario `user` por defecto (`UserDetailsServiceAutoConfiguration`). Es ruido inocuo:
-este PoC no usa ese usuario ni `httpBasic`/`formLogin` — toda la autenticación real
-pasa por el flujo OAuth2/JWT descrito arriba.
+When starting the app, Spring Boot may print a warning about a generated password for a default `user` account (`UserDetailsServiceAutoConfiguration`). This is harmless noise: this PoC does not use that user or `httpBasic`/`formLogin` — all real authentication goes through the OAuth2/JWT flow described above.
 
-## Decisiones de stack (confirmadas)
+## Stack decisions (confirmed)
 
-| Decisión | Valor |
+| Decision | Value |
 |---|---|
-| Lenguaje / framework | Java 17 + Spring Boot 3.2 + Maven |
-| Formato de mensaje | XML real, binding con JAXB (Jakarta XML Bind) |
-| Persistencia | H2 embebido en memoria, JPA/Hibernate |
-| Vocabulario de patrones | Enterprise Integration Patterns (channel, transformer, router, validator) |
+| Language / framework | Java 17 + Spring Boot 3.2 + Maven |
+| Message format | Real XML, binding with JAXB (Jakarta XML Bind) |
+| Persistence | H2 embedded in-memory, JPA/Hibernate |
+| Pattern vocabulary | Enterprise Integration Patterns (channel, transformer, router, validator) |
+| API documentation | OpenAPI 3 / Swagger UI (`springdoc-openapi`) |
 
-## Alcance, fuentes y supuestos (léase antes de presentarlo)
+## Scope, sources and assumptions (read before citing this)
 
-Este PoC fue construido siendo deliberadamente honesto sobre sus límites, porque
-eso es parte de lo que lo hace defendible frente a un entrevistador técnico:
+This PoC was built being deliberately honest about its limits, because that is part of what makes it defensible in front of a technical interviewer:
 
-1. **El layout exacto del archivo SPI1 real no es público.** El BCE no publica en
-   una fuente abierta el formato de posiciones/anchos de campo que usa hoy la banca
-   ecuatoriana. Este proyecto define un **formato delimitado razonable** (ver
-   `Spi1Parser.java`) con los mismos campos de negocio exigidos por la normativa
-   citada arriba, para poder demostrar el motor de transformación de punta a punta.
+1. **The exact layout of the real SPI1 file is not public.** The BCE does not publish the field-position/width format used today by Ecuadorian banks in any openly accessible source. This project defines a **reasonable delimited format** (see `Spi1Parser.java`) with the same business fields mandated by the regulations cited above, in order to demonstrate the end-to-end transformation engine.
 
-2. **Las clases JAXB de pacs.008/pacs.002 no se generaron desde el XSD oficial de
-   iso20022.org.** El entorno de desarrollo usado no tiene salida de red hacia ese
-   dominio. Las clases en `jaxb/Pacs008Document.java` y `jaxb/Pacs002Document.java`
-   fueron **escritas a mano**, reproduciendo la jerarquía y los nombres de elementos
-   reales de esos mensajes (`GrpHdr`, `CdtTrfTxInf`, `IntrBkSttlmAmt`, `Dbtr`,
-   `CdtrAgt`, `TxSts`, etc.) según la documentación pública de ISO 20022. **Antes de
-   usar esto en un contexto real, se debe regenerar el binding con `xjc` a partir
-   del XSD oficial.**
+2. **The pacs.008/pacs.002 JAXB classes were not generated from the official iso20022.org XSD.** The development environment did not have network access to that domain. The classes in `jaxb/Pacs008Document.java` and `jaxb/Pacs002Document.java` were **hand-written**, reproducing the real element hierarchy and names from those messages (`GrpHdr`, `CdtTrfTxInf`, `IntrBkSttlmAmt`, `Dbtr`, `CdtrAgt`, `TxSts`, etc.) from the public ISO 20022 documentation. **Before using this in a real context, the binding must be regenerated with `xjc` from the official XSD.**
 
-3. **No existe una especificación pública del BCE a nivel de campo** (qué campo
-   SPI1 va exactamente a qué elemento ISO 20022) al momento de construir este PoC.
-   El mapeo de campos (`Pacs008Mapper.java`) se diseñó **por analogía** con el
-   mecanismo operativo de pagos inmediatos de Colombia (MOL / Bre-B), que sí tiene
-   especificación técnica pública, adaptado a los campos y a la normativa
-   ecuatoriana (LAFT, límite de USD 15,000). **Esto es una referencia arquitectónica
-   razonada, no la especificación oficial del BCE.**
+3. **No BCE field-level specification is publicly available** (which SPI1 field maps exactly to which ISO 20022 element) at the time this PoC was built. The field mapping (`Pacs008Mapper.java`) was designed **by analogy** with Colombia's immediate payments mechanism (MOL / Bre-B), which has a public technical specification, adapted to Ecuadorian fields and regulations (LAFT, USD 15,000 limit). **This is a reasoned architectural reference, not the official BCE specification.**
 
-4. **Los códigos de tipo de identificación (`CI`, `CE`, `RUC`, `PASS`)** provienen
-   de la documentación técnica pública de Local Payment, un procesador de pagos que
-   opera en Ecuador — usados como sustituto verificado de la "Tabla No. 2 Tipo de
-   identificación" oficial del SRI (parte de la ficha técnica del Anexo ROTEF), cuyos
-   valores de catálogo no se pudieron obtener de una fuente pública accesible (solo
-   se confirmó que ese catálogo existe). Si se obtiene el catálogo oficial, estos
-   códigos deben reemplazarse.
+4. **Identification type codes (`CI`, `CE`, `RUC`, `PASS`)** come from the public technical documentation of Local Payment, a payment processor operating in Ecuador — used as a verified substitute for the official SRI "Table No. 2 - Identification Type" catalog (part of the ROTEF Annex technical spec), whose catalog values could not be obtained from any publicly accessible source (only confirmed that the catalog exists). If the official catalog is obtained, these codes should be replaced.
 
-5. El `SwitchGatewaySimulator` es un simulador local determinista para la demo —
-   **no se conecta a ningún sistema real del BCE.**
+5. `SwitchGatewaySimulator` is a local deterministic simulator for the demo — **it does not connect to any real BCE system.**
 
-6. **Seguridad**: OAuth 2.0 (client_credentials) + JWT y mTLS SÍ están implementados
-   en código (ver la sección "Seguridad" arriba), pero como **simulaciones de la
-   mecánica**, no como componentes de grado productivo — no hay Authorization
-   Server real, no hay JWKS/rotación de llaves, y los certificados mTLS son
-   autofirmados y solo para la demo local. La retención de 10 años por LAFT está
-   documentada como requisito pero no implementada como política de retención real
-   (el H2 es en memoria y se pierde al apagar la app).
+6. **Security**: OAuth 2.0 (client_credentials) + JWT and mTLS ARE implemented in code (see Security section above), but as **simulations of the mechanics**, not production-grade components — no real Authorization Server, no JWKS/key rotation, and mTLS certificates are self-signed and for local demo only. The 10-year LAFT retention requirement is documented as a requirement but not implemented as a real retention policy (H2 is in-memory and lost on shutdown).
 
-## Qué NO es este proyecto
+## What this project is NOT
 
-- No es una implementación certificada ni auditada por el BCE.
-- No usa datos reales de ninguna institución financiera (todos los datos de
-  ejemplo en `examples/` son ficticios).
-- No implementa autenticación, cifrado en tránsito, ni los demás controles de
-  seguridad de producción — están documentados, no codificados.
+- Not a certified or audited implementation by the BCE.
+- Does not use real data from any financial institution (all sample data in `examples/` is fictional).
+- Does not implement production-grade authentication, encryption in transit, or other production security controls — these are documented, not coded.
 
-## Estructura del repositorio
+## Repository structure
 
 ```
-.github/workflows/ci.yml   pipeline de CI (mvn verify en cada push/PR)
+.github/workflows/ci.yml   CI pipeline (mvn verify on every push/PR)
 .gitignore
-LICENSE                     MIT, con nota de alcance (no es software de producción)
+LICENSE                     MIT, with scope note (not production software)
 pom.xml
 src/main/java/com/stan/poc/spi2iso/
-  model/         Spi1Record (POJO del registro SPI1)
-  jaxb/          Pacs008Document, Pacs002Document (binding JAXB hecho a mano) + XmlUtil
+  model/         Spi1Record (SPI1 record POJO)
+  jaxb/          Pacs008Document, Pacs002Document (hand-written JAXB binding) + XmlUtil
   parser/        Spi1Parser
   generator/     Spi1FileGenerator
   mapping/       Pacs008Mapper
   validation/    Pacs008Validator, ValidationResult
   gateway/       SwitchGatewaySimulator
-  persistence/   TransactionLog (entidad JPA), TransactionLogRepository
-  service/       Spi1ToIso20022Service (orquestación del pipeline)
-  controller/bian/ PaymentExecutionController, ClearingAndSettlementController (API REST con nomenclatura BIAN)
+  persistence/   TransactionLog (JPA entity), TransactionLogRepository
+  service/       Spi1ToIso20022Service (pipeline orchestration)
+  controller/bian/ PaymentExecutionController, ClearingAndSettlementController (REST API with BIAN nomenclature)
+  config/        OpenApiConfig (Swagger / OpenAPI 3 metadata)
   security/      SecurityConfig, JwtAuthenticationFilter, ClientRegistry, TokenController
-  security/jwt/  JwtService (emisión/validación de JWT de demo)
-  security/mask/ LaftMaskingUtil (enmascaramiento de datos sensibles en logs)
+  security/jwt/  JwtService (demo JWT issuance/validation)
+  security/mask/ LaftMaskingUtil (sensitive data masking in logs)
 src/main/resources/
-  application.properties        configuración principal (incluye secretos de demo)
-  application-mtls.properties   perfil opcional de mTLS
-  certs/                         keystores de demo (generados por el script, no versionados)
-scripts/generar-certificados-mtls.sh   genera los certificados autofirmados de demo
-src/test/java/...  PipelineTest (pipeline completo) + JwtServiceTest (emisión/validación de tokens)
-examples/spi1-demo.txt   archivo SPI1 de ejemplo (3 escenarios)
+  application.properties        main configuration (includes demo secrets)
+  application-mtls.properties   optional mTLS profile
+  certs/                         demo keystores (generated by script, not versioned)
+scripts/generar-certificados-mtls.sh   generates self-signed demo certificates
+src/test/java/...  PipelineTest (full pipeline) + JwtServiceTest (token issuance/validation)
+examples/spi1-demo.txt   sample SPI1 file (3 scenarios)
 ```
 
-## Autor
+## Author
 
-Stan — construido como evidencia de portafolio para la postulación al rol de
-Arquitecto de Integración, Banco Pichincha (Ecuador).
+Stan — built as portfolio evidence for the Integration Architect role application, Banco Pichincha (Ecuador).
