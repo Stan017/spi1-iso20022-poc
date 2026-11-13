@@ -21,8 +21,8 @@ Implements the end-to-end transformation engine:
 
 ```
 SPI1 file (flat) → Spi1Parser → Pacs008Validator → Pacs008Mapper
-   → pacs.008.001.08 (real XML via JAXB) → SwitchGatewaySimulator
-   → pacs.002.001.10 (real XML via JAXB) → TransactionLog (H2, with T510/T515/T520/T530 timestamps)
+   → pacs.008.001.14 (real XML via JAXB, generated with xjc from the official XSD) → SwitchGatewaySimulator
+   → pacs.002.001.16 (real XML via JAXB, generated with xjc from the official XSD) → TransactionLog (H2, with T510/T515/T520/T530 timestamps)
 ```
 
 Also exposed as a REST API (Spring Boot) with 3 demo scenarios (accepted / rejected / timeout) in `examples/spi1-demo.txt`.
@@ -98,7 +98,7 @@ All routes require the `Authorization: Bearer <token>` header (see Security sect
 
 ## Security (Layer 4)
 
-The PoC implements two security mechanisms, aligned with the documented design:
+The PoC implements the following security mechanisms and hardening measures, aligned with the documented design:
 
 ### 1. OAuth 2.0 (`client_credentials` flow) + JWT
 
