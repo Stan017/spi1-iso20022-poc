@@ -1,0 +1,10 @@
+# Normaliza los finales de linea a LF en el repo (git los convierte a CRLF al
+# hacer checkout en Windows si el usuario asi lo configura, sin generar el
+# warning "LF will be replaced by CRLF" en cada commit).
+* text=auto eol=lf
+
+*.jar binary
+*.p12 binary
+*.pem binary
+*.crt binary
+*.key binary
