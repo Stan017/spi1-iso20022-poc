@@ -9,7 +9,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -70,12 +72,18 @@ public class PaymentExecutionController {
                     la parsea, valida, mapea a pacs.008 ISO 20022, la envía al switch simulado y persiste \
                     el log de trazabilidad (T510/T515/T520/T530).
 
-                    Ejemplo de línea SPI1 (ver `examples/` en el repo):
+                    Ejemplo de línea SPI1 (idéntica a la primera línea de `examples/spi1-demo.txt`,
+                    17 campos delimitados por `|` — ver `Spi1Parser.java` para el detalle de cada campo):
                     ```
-                    INST-001|0010|0020|50.00|USD|CI|1234567890|CTA|0987654321|CRED|Alice|SERVICIOS
+                    INS-0001|0010|Banco Demo Uno|0020|Banco Demo Dos|01-0123456-7|02-9876543-1|250.00|USD|CI|1712345678|Maria Fernanda Lopez|RUC|1790012345001|Comercial Andina S.A.|20261112093000|Pago factura 4521
                     ```
                     """,
             security = @SecurityRequirement(name = "bearerAuth"),
+            requestBody = @RequestBody(
+                    required = true,
+                    content = @Content(mediaType = "text/plain",
+                            examples = @ExampleObject(
+                                    value = "INS-0001|0010|Banco Demo Uno|0020|Banco Demo Dos|01-0123456-7|02-9876543-1|250.00|USD|CI|1712345678|Maria Fernanda Lopez|RUC|1790012345001|Comercial Andina S.A.|20261112093000|Pago factura 4521"))),
             responses = {
                     @ApiResponse(responseCode = "200", description = "Procesada (ACSC, RJCT o TIMEOUT)",
                             content = @Content(schema = @Schema(implementation = Spi1ToIso20022Service.TransactionResult.class))),
@@ -86,7 +94,7 @@ public class PaymentExecutionController {
             }
     )
     @PostMapping(value = "/initiate", consumes = "text/plain")
-    public ResponseEntity<Spi1ToIso20022Service.TransactionResult> initiate(@RequestBody String lineaSpi1) {
+    public ResponseEntity<Spi1ToIso20022Service.TransactionResult> initiate(@org.springframework.web.bind.annotation.RequestBody String lineaSpi1) {
         Spi1Record record = parser.parseLine(lineaSpi1);
         return ResponseEntity.ok(service.procesarRegistro(record));
     }
@@ -107,8 +115,8 @@ public class PaymentExecutionController {
     )
     @PostMapping("/initiate-batch")
     public ResponseEntity<List<Spi1ToIso20022Service.TransactionResult>> initiateBatch(
-            @Parameter(description = "Ruta absoluta del archivo SPI1 en el sistema de archivos local",
-                    example = "examples/spi1-sample.txt")
+            @Parameter(description = "Ruta del archivo SPI1 (absoluta, o relativa al directorio de trabajo del proceso)",
+                    example = "examples/spi1-demo.txt")
             @RequestParam String ruta) throws IOException {
         return ResponseEntity.ok(service.procesarArchivo(Path.of(ruta)));
     }
@@ -127,7 +135,7 @@ public class PaymentExecutionController {
     )
     @GetMapping("/{crId}/retrieve")
     public ResponseEntity<TransactionLog> retrieve(
-            @Parameter(description = "Control Record Id — el numeroInstruccion del SPI1", example = "INST-001")
+            @Parameter(description = "Control Record Id — el numeroInstruccion del SPI1", example = "INS-0001")
             @PathVariable String crId) {
         return repository.findByNumeroInstruccion(crId)
                 .map(ResponseEntity::ok)

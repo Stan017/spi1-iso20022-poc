@@ -67,7 +67,9 @@ public class ClearingAndSettlementController {
     )
     @GetMapping("/{crId}/retrieve")
     public ResponseEntity<SettlementStatusView> retrieve(
-            @Parameter(description = "Control Record Id — el numeroInstruccion del SPI1", example = "INST-001")
+            @Parameter(description = "Control Record Id — el numeroInstruccion del SPI1 "
+                    + "(ej. INS-0001=ACSC, INS-0002=RJCT, INS-0003=TIMEOUT en examples/spi1-demo.txt)",
+                    example = "INS-0002")
             @PathVariable String crId) {
         return repository.findByNumeroInstruccion(crId)
                 .map(this::toSettlementView)
