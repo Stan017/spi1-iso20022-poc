@@ -1,8 +1,8 @@
 package com.stan.poc.spi2iso;
 
 import com.stan.poc.spi2iso.gateway.SwitchGatewaySimulator;
-import com.stan.poc.spi2iso.jaxb.Pacs008Document;
 import com.stan.poc.spi2iso.jaxb.XmlUtil;
+import com.stan.poc.spi2iso.jaxb.generated.pacs008.Document;
 import com.stan.poc.spi2iso.mapping.Pacs008Mapper;
 import com.stan.poc.spi2iso.model.Spi1Record;
 import com.stan.poc.spi2iso.parser.Spi1Parser;
@@ -66,10 +66,10 @@ class PipelineTest {
     @Test
     void mapeoGeneraXmlPacs008ConCamposClave() {
         Spi1Record r = parser.parseLine(LINEA_VALIDA);
-        Pacs008Document doc = mapper.toPacs008(r);
-        String xml = XmlUtil.marshal(doc);
+        Document doc = mapper.toPacs008(r);
+        String xml = XmlUtil.marshalPacs008(doc);
 
-        assertTrue(xml.contains("pacs.008.001.08"));
+        assertTrue(xml.contains("pacs.008.001.14"));
         assertTrue(xml.contains("IntrBkSttlmAmt"));
         assertTrue(xml.contains("1712345678")); // id del ordenante propagado
         assertTrue(xml.contains("Comercial Andina S.A."));
@@ -78,7 +78,7 @@ class PipelineTest {
     @Test
     void switchSimuladoAceptaTransaccionNormal() {
         Spi1Record r = parser.parseLine(LINEA_VALIDA);
-        Pacs008Document doc = mapper.toPacs008(r);
+        Document doc = mapper.toPacs008(r);
         var respuesta = gateway.procesar(doc);
         assertEquals("ACSC", respuesta.estado());
     }
@@ -87,7 +87,7 @@ class PipelineTest {
     void switchSimuladoRechazaMontoDeDemo999_99() {
         Spi1Record r = parser.parseLine(LINEA_VALIDA);
         r.setMonto(new BigDecimal("999.99"));
-        Pacs008Document doc = mapper.toPacs008(r);
+        Document doc = mapper.toPacs008(r);
         var respuesta = gateway.procesar(doc);
         assertEquals("RJCT", respuesta.estado());
     }
@@ -96,7 +96,7 @@ class PipelineTest {
     void switchSimuladoNoRespondeConReferenciaTimeout() {
         Spi1Record r = parser.parseLine(LINEA_VALIDA);
         r.setReferencia("TIMEOUT de prueba");
-        Pacs008Document doc = mapper.toPacs008(r);
+        Document doc = mapper.toPacs008(r);
         var respuesta = gateway.procesar(doc);
         assertEquals(SwitchGatewaySimulator.RESULT_TIMEOUT, respuesta.estado());
         assertNull(respuesta.pacs002());

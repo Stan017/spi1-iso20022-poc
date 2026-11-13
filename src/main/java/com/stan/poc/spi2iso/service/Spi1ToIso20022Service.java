@@ -1,8 +1,8 @@
 package com.stan.poc.spi2iso.service;
 
 import com.stan.poc.spi2iso.gateway.SwitchGatewaySimulator;
-import com.stan.poc.spi2iso.jaxb.Pacs008Document;
 import com.stan.poc.spi2iso.jaxb.XmlUtil;
+import com.stan.poc.spi2iso.jaxb.generated.pacs008.Document;
 import com.stan.poc.spi2iso.mapping.Pacs008Mapper;
 import com.stan.poc.spi2iso.model.Spi1Record;
 import com.stan.poc.spi2iso.parser.Spi1Parser;
@@ -79,8 +79,8 @@ public class Spi1ToIso20022Service {
             return new TransactionResult(r.getNumeroInstruccion(), "RECHAZADO", validacion.toString(), null, null);
         }
 
-        Pacs008Document pacs008 = mapper.toPacs008(r);
-        String pacs008Xml = XmlUtil.marshal(pacs008);
+        Document pacs008 = mapper.toPacs008(r);
+        String pacs008Xml = XmlUtil.marshalPacs008(pacs008);
         log.setPacs008Xml(pacs008Xml);
         log.setEstado("ENVIADO");
         log.setT520EnviadoEn(LocalDateTime.now());
@@ -96,7 +96,7 @@ public class Spi1ToIso20022Service {
                     "Sin respuesta del switch (timeout simulado)", pacs008Xml, null);
         }
 
-        String pacs002Xml = XmlUtil.marshal(respuesta.pacs002());
+        String pacs002Xml = XmlUtil.marshalPacs002(respuesta.pacs002());
         log.setPacs002Xml(pacs002Xml);
         log.setEstado(respuesta.estado());
         if ("RJCT".equals(respuesta.estado())) {

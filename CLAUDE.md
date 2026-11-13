@@ -46,11 +46,14 @@ en cada push — pero corre eso también localmente primero, es más rápido ite
 ## Stack y decisiones ya confirmadas con Stan (no las cuestiones sin preguntarle)
 
 - **Lenguaje/framework**: Java 17 + Spring Boot 3.2 + Maven — confirmado, no Kotlin/Node.
-- **Formato de mensaje**: XML real con JAXB (binding escrito a mano, no generado
-  desde el XSD oficial de iso20022.org porque ese dominio no era alcanzable desde
-  el sandbox anterior — ver limitación en README). Si ahora SÍ tienes acceso a
-  internet normal, considera ofrecerle a Stan regenerar el binding con `xjc` desde
-  el XSD real descargado de iso20022.org — sería una mejora real de fidelidad.
+- **Formato de mensaje**: XML real con JAXB, binding generado con `xjc` desde el
+  XSD OFICIAL de iso20022.org (`src/main/resources/xsd/pacs008/pacs.008.001.14.xsd`
+  y `xsd/pacs002/pacs.002.001.16.xsd`, descargados directo del catálogo). Ya no es
+  codigo escrito a mano — ver `jaxb2-maven-plugin` en pom.xml y la sección
+  "Alcance, fuentes y supuestos" del README para el detalle (incluye por qué se usó
+  la version .14/.16, la última publicada, en vez de la .08/.10 citada en la
+  normativa, y los dos campos obligatorios del esquema real que el SPI1 de este PoC
+  no modela: `ChrgBr`, `SttlmMtd`, fijados a un valor constante en `Pacs008Mapper`).
 - **Persistencia**: H2 embebido en memoria (JPA/Hibernate) — confirmado.
 - **Seguridad**: OAuth2 client_credentials + JWT (implementación propia, HMAC-SHA256,
   sin librería externa) + mTLS opcional (perfil `mtls`, certificados autofirmados
@@ -84,12 +87,20 @@ Ya materializado en este repo:
   3 controllers, Swagger UI en `/swagger-ui.html`, probado end-to-end.
 - CI en GitHub Actions: corriendo en verde en la rama `main` (el repo real está
   en https://github.com/Stan017/spi1-iso20022-poc).
+- Binding JAXB real: regenerado con `xjc` desde el XSD oficial (ver arriba) —
+  `jaxb2-maven-plugin` en pom.xml, XSDs en `src/main/resources/xsd/`, 228 clases
+  generadas en cada build (no versionadas). `Pacs008Mapper`, `SwitchGatewaySimulator`
+  y `XmlUtil` ya estan reescritos contra esas clases reales, probado end-to-end.
 
 ## Limitaciones ya conocidas y comunicadas a Stan (no las presentes como nuevas)
 
 1. El layout exacto del archivo SPI1 real no es público — se definió un formato
    delimitado propio con los mismos campos de negocio.
-2. Las clases JAXB no vienen de un XSD oficial descargado (ver arriba).
+2. El binding JAXB SÍ viene del XSD oficial ahora (ver arriba) — pero es la
+   version mas reciente publicada (pacs.008.001.14 / pacs.002.001.16), no la
+   .08/.10 citada en la normativa del BCE (que ya no es la version vigente en
+   el catalogo de iso20022.org; las versiones nuevas son superconjuntos
+   retrocompatibles de los campos usados aqui).
 3. El mapeo de campos SPI1→ISO20022 es por analogía con el modelo MOL/Bre-B de
    Colombia (público), no la especificación oficial del BCE (que no existe pública).
 4. Los códigos de tipo de identificación (CI/CE/RUC/PASS) vienen de un procesador
@@ -103,19 +114,16 @@ Todo esto YA está en el README con el detalle completo — mantenlo ahí si lo 
 no lo borres ni lo suavices: la honestidad sobre estos límites es parte de lo que
 hace al proyecto defendible en una entrevista técnica.
 
-## Pendientes conocidos (en orden sugerido)
+## Pendientes conocidos
 
-Ya resueltos (no los vuelvas a proponer como pendientes): `mvn verify` corre
-limpio, Swagger/OpenAPI está implementado y probado, el repo está en GitHub
-(`Stan017/spi1-iso20022-poc`, rama `main`, CI en verde), el README está en
-inglés, y la Capa 5 (gobierno) ya vive en `docs/governance.md`.
+No quedan pendientes conocidos. Ya resueltos (no los vuelvas a proponer):
+`mvn verify` corre limpio, Swagger/OpenAPI está implementado y probado, el
+repo está en GitHub (`Stan017/spi1-iso20022-poc`, rama `main`, CI en verde),
+el README está en inglés, la Capa 5 (gobierno) vive en `docs/governance.md`,
+y el binding JAXB se regeneró con `xjc` desde el XSD oficial de iso20022.org.
 
-Lo único que queda, y es opcional:
-
-1. Si tienes acceso real a internet, considera regenerar el binding JAXB
-   (`Pacs008Document`/`Pacs002Document`) desde el XSD oficial de iso20022.org
-   con `xjc` (ver nota de stack arriba) y confirmarle a Stan si quiere ese
-   nivel de fidelidad — hoy el binding está escrito a mano.
+Si Stan pide seguir iterando, lo mas probable es que sea sobre algo nuevo que
+no esta en esta lista — no asumas que hay trabajo pendiente sin preguntarle.
 
 ## Cómo trabajar con Stan en esto
 

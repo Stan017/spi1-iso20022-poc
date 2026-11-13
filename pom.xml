@@ -30,6 +30,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jaxb.version>4.0.4</jaxb.version>
+        <jaxb2-maven-plugin.version>3.2.0</jaxb2-maven-plugin.version>
     </properties>
 
     <dependencies>
@@ -94,6 +95,61 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!--
+                Genera el binding JAXB real con xjc, a partir de los XSD oficiales
+                descargados de iso20022.org (src/main/resources/xsd/pacsNNN/*.xsd) -
+                ver README.md, seccion "Alcance, fuentes y supuestos". Reemplaza las
+                clases escritas a mano que tenia este PoC originalmente.
+
+                Cada mensaje va a su propio paquete porque ambos XSD son
+                autocontenidos (sin xs:import/xs:include) y declaran tipos comunes
+                con el MISMO nombre (ej. "PartyIdentification272", "CashAccount40")
+                en namespaces distintos - sin esta separacion, xjc generaria clases
+                en conflicto dentro del mismo paquete.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>jaxb2-maven-plugin</artifactId>
+                <version>${jaxb2-maven-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.glassfish.jaxb</groupId>
+                        <artifactId>jaxb-xjc</artifactId>
+                        <version>${jaxb.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>xjc-pacs008</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>xjc</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/main/resources/xsd/pacs008</source>
+                            </sources>
+                            <packageName>com.stan.poc.spi2iso.jaxb.generated.pacs008</packageName>
+                            <clearOutputDir>true</clearOutputDir>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>xjc-pacs002</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>xjc</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/main/resources/xsd/pacs002</source>
+                            </sources>
+                            <packageName>com.stan.poc.spi2iso.jaxb.generated.pacs002</packageName>
+                            <clearOutputDir>false</clearOutputDir>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
