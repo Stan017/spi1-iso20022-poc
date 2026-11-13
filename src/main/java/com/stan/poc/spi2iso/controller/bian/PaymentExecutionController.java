@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /**
  * API expuesta como el Service Domain BIAN <b>Payment Execution</b>.
@@ -99,26 +100,58 @@ public class PaymentExecutionController {
         return ResponseEntity.ok(service.procesarRegistro(record));
     }
 
+    /** Unico directorio del que initiate-batch puede leer - ver resolverArchivoDemo(). */
+    private static final Path DIRECTORIO_EJEMPLOS = Path.of("examples").toAbsolutePath().normalize();
+
     @Operation(
             summary = "Initiate-batch — procesar un archivo SPI1 completo",
             description = """
                     **Conveniencia de demo** (no un BQ BIAN propio): aplica Initiate a cada línea del archivo \
-                    SPI1 indicado por `ruta` (ruta del sistema de archivos local). \
-                    Útil para probar el pipeline completo con el archivo de ejemplo incluido en `examples/`.
+                    SPI1 indicado por `ruta`. Por seguridad, `ruta` se trata como un nombre de archivo (se \
+                    descarta cualquier componente de directorio) y SIEMPRE se resuelve dentro de `examples/` \
+                    en el servidor - no se puede usar para leer ningun otro archivo del sistema.
                     """,
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @ApiResponse(responseCode = "200", description = "Lista de resultados, uno por instrucción"),
+                    @ApiResponse(responseCode = "400", description = "ruta invalida (vacia, '.' o '..')", content = @Content),
                     @ApiResponse(responseCode = "401", description = "Sin token o token inválido", content = @Content),
                     @ApiResponse(responseCode = "403", description = "Token sin scope transferencias:write", content = @Content)
             }
     )
     @PostMapping("/initiate-batch")
     public ResponseEntity<List<Spi1ToIso20022Service.TransactionResult>> initiateBatch(
-            @Parameter(description = "Ruta del archivo SPI1 (absoluta, o relativa al directorio de trabajo del proceso)",
-                    example = "examples/spi1-demo.txt")
+            @Parameter(description = "Nombre del archivo SPI1 dentro de examples/ (cualquier componente de "
+                    + "directorio en el valor se descarta)",
+                    example = "spi1-demo.txt")
             @RequestParam String ruta) throws IOException {
-        return ResponseEntity.ok(service.procesarArchivo(Path.of(ruta)));
+        return ResponseEntity.ok(service.procesarArchivo(resolverArchivoDemo(ruta)));
+    }
+
+    /**
+     * Resuelve `ruta` SIEMPRE dentro de {@link #DIRECTORIO_EJEMPLOS}, usando solo su
+     * nombre de archivo (ignora cualquier componente de directorio, incluidos "..").
+     * Sin esto, initiate-batch seria una lectura arbitraria de archivos del servidor
+     * (cualquier cliente con scope transferencias:write podria pasar ruta=/etc/passwd
+     * o similar) - ver README, seccion Seguridad.
+     */
+    private Path resolverArchivoDemo(String ruta) {
+        Path nombre = (ruta == null || ruta.isBlank()) ? null : Path.of(ruta).getFileName();
+        String nombreArchivo = nombre == null ? "" : nombre.toString();
+        if (nombreArchivo.isBlank() || nombreArchivo.equals(".") || nombreArchivo.equals("..")) {
+            throw new IllegalArgumentException(
+                    "ruta invalida: debe ser el nombre de un archivo dentro de examples/");
+        }
+        Path resuelto = DIRECTORIO_EJEMPLOS.resolve(nombreArchivo).normalize();
+        if (!resuelto.startsWith(DIRECTORIO_EJEMPLOS)) {
+            throw new IllegalArgumentException("ruta invalida: fuera del directorio permitido (examples/)");
+        }
+        return resuelto;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> manejarEntradaInvalida(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", "invalid_request", "error_description", e.getMessage()));
     }
 
     @Operation(

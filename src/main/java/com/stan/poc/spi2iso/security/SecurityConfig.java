@@ -17,9 +17,16 @@ import org.springframework.http.HttpStatus;
  *
  * Reglas (rutas con nomenclatura de Service Domain BIAN - ver paquete controller.bian):
  *   - POST /oauth/token                                      -> publico (emite el token)
- *   - /h2-console/**                                         -> publico (solo para inspeccionar
- *                                                                la demo localmente; NUNCA se
- *                                                                expondria asi en un entorno real)
+ *   - /h2-console/**                                         -> publico, PERO la consola en si
+ *                                                                esta deshabilitada por defecto
+ *                                                                (spring.h2.console.enabled=false
+ *                                                                en application.properties) y solo
+ *                                                                se activa con el perfil opt-in
+ *                                                                "local" (application-local.properties).
+ *                                                                Si se activa, esta regla sigue sin
+ *                                                                exigir autenticacion - NUNCA activar
+ *                                                                ese perfil en un entorno alcanzable
+ *                                                                desde una red que no sea de confianza.
  *   - POST /payment-execution/payment-instructions/**        -> scope "transferencias:write"
  *                                                                (Behavior Qualifier: Initiate)
  *   - GET  /payment-execution/payment-instructions/**        -> scope "transferencias:read"
