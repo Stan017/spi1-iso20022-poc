@@ -72,8 +72,18 @@ Construido como código (en este repo):
 Solo documentado (en un Claude Docs — Stan tiene el link, pregúntale si lo necesitas,
 no está en este repo):
 - Capa 1-2: alcance, criterios de éxito, mapeo de campos SPI1→pacs.008.
-- Capa 5 (gobierno): mapeo TOGAF ADM, roadmap de migración, matriz de riesgo.
 - Capa 6 (empaquetado): esto ya se está materializando en este propio repo.
+
+Ya materializado en este repo:
+- Capa 5 (gobierno): `docs/governance.md` — mapeo TOGAF ADM, roadmap de migración
+  por hito regulatorio, matriz de riesgo. Escrito en inglés para ser consistente
+  con el README (también ya traducido). Si Stan pide seguir iterando sobre
+  gobierno, el contenido vive ahí — no vuelvas a copiarlo desde el Claude Doc
+  original sin confirmar con él primero cuál es la fuente de verdad.
+- Swagger/OpenAPI: `OpenApiConfig` + anotaciones `@Operation`/`@Tag` en los
+  3 controllers, Swagger UI en `/swagger-ui.html`, probado end-to-end.
+- CI en GitHub Actions: corriendo en verde en la rama `main` (el repo real está
+  en https://github.com/Stan017/spi1-iso20022-poc).
 
 ## Limitaciones ya conocidas y comunicadas a Stan (no las presentes como nuevas)
 
@@ -95,18 +105,17 @@ hace al proyecto defendible en una entrevista técnica.
 
 ## Pendientes conocidos (en orden sugerido)
 
-1. **`mvn verify` y arreglar lo que falle** (ver arriba — máxima prioridad).
-2. Documentación OpenAPI/Swagger de la API (`springdoc-openapi-starter-webmvc-ui`)
-   — Stan lo pidió como posible siguiente paso, relevante para un rol de
-   integración donde los contratos de API importan.
-3. Subir el repo a GitHub de verdad y reemplazar el placeholder `<usuario>/<repo>`
-   en el badge de CI del README por los datos reales.
-4. Opcional: si tienes acceso real a internet, considera regenerar el binding
-   JAXB desde el XSD oficial de iso20022.org (ver nota de stack arriba) y
-   confirmarle a Stan si quiere ese nivel de fidelidad.
-5. Capa 5 (gobierno) vive solo en el doc de diseño — si Stan pide materializarla
-   aquí (ej. un `docs/gobierno.md`), pregúntale primero si quiere que copie el
-   contenido del Claude Doc o si prefiere mantenerlo solo ahí.
+Ya resueltos (no los vuelvas a proponer como pendientes): `mvn verify` corre
+limpio, Swagger/OpenAPI está implementado y probado, el repo está en GitHub
+(`Stan017/spi1-iso20022-poc`, rama `main`, CI en verde), el README está en
+inglés, y la Capa 5 (gobierno) ya vive en `docs/governance.md`.
+
+Lo único que queda, y es opcional:
+
+1. Si tienes acceso real a internet, considera regenerar el binding JAXB
+   (`Pacs008Document`/`Pacs002Document`) desde el XSD oficial de iso20022.org
+   con `xjc` (ver nota de stack arriba) y confirmarle a Stan si quiere ese
+   nivel de fidelidad — hoy el binding está escrito a mano.
 
 ## Cómo trabajar con Stan en esto
 

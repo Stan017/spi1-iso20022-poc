@@ -27,6 +27,8 @@ SPI1 file (flat) → Spi1Parser → Pacs008Validator → Pacs008Mapper
 
 Also exposed as a REST API (Spring Boot) with 3 demo scenarios (accepted / rejected / timeout) in `examples/spi1-demo.txt`.
 
+See also [`docs/governance.md`](docs/governance.md) for the TOGAF ADM mapping, the migration roadmap by regulatory milestone, and the project's risk matrix (Layer 5 — Governance).
+
 ## BIAN alignment
 
 BIAN (Banking Industry Architecture Network) organizes banking capabilities into **Service Domains**. This PoC maps its pipeline to the two relevant domains for an interbank transfer, reflected directly in the code — not just in the design document:
@@ -210,6 +212,7 @@ src/main/resources/
 scripts/generar-certificados-mtls.sh   generates self-signed demo certificates
 src/test/java/...  PipelineTest (full pipeline) + JwtServiceTest (token issuance/validation)
 examples/spi1-demo.txt   sample SPI1 file (3 scenarios)
+docs/governance.md   Layer 5 — TOGAF ADM mapping, migration roadmap, risk matrix
 ```
 
 ## Author
