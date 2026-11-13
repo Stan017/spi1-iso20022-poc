@@ -1,0 +1,42 @@
+name: CI
+
+# Corre las pruebas de este PoC en cada push y en cada Pull Request a main.
+#
+# Por que existe este pipeline: el entorno en el que se construyo este PoC no tenia
+# salida de red hacia Maven Central, asi que el codigo nunca pudo compilarse ni
+# probarse "en caliente" durante su desarrollo (ver README.md, seccion de
+# limitaciones). Este workflow es la primera verificacion real de que el proyecto
+# compila y sus pruebas pasan - y queda corriendo en cada cambio futuro.
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compilar y correr pruebas (mvn verify)
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Publicar reporte de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore

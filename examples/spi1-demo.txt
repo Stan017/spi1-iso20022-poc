@@ -1,0 +1,11 @@
+# Archivo SPI1 de ejemplo para la demo del PoC SPI1 -> ISO 20022.
+# Formato: ver Spi1Parser.java. Lineas que empiezan con '#' son comentarios.
+#
+# Escenario 1: transaccion valida -> se liquida (ACSC)
+INS-0001|0010|Banco Demo Uno|0020|Banco Demo Dos|01-0123456-7|02-9876543-1|250.00|USD|CI|1712345678|Maria Fernanda Lopez|RUC|1790012345001|Comercial Andina S.A.|20261112093000|Pago factura 4521
+#
+# Escenario 2: monto 999.99 -> el simulador de switch la rechaza (RJCT, motivo AM02)
+INS-0002|0010|Banco Demo Uno|0030|Banco Demo Tres|01-0123456-7|03-5551234-9|999.99|USD|RUC|1790098765001|Importadora del Pacifico Cia Ltda|CI|0923456789|Jose Luis Ramirez|20261112093500|Pago proveedor
+#
+# Escenario 3: referencia contiene TIMEOUT -> el switch simulado no responde
+INS-0003|0010|Banco Demo Uno|0040|Banco Demo Cuatro|01-0123456-7|04-7778889-3|75.50|USD|CE|175000111222|Ana Gabriela Torres|PASS|AB1234567|Carlos Mendoza|20261112094000|TIMEOUT prueba de reintento

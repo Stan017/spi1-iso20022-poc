@@ -1,0 +1,23 @@
+# Maven
+target/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Certificados de demo generados por scripts/generar-certificados-mtls.sh
+# (nunca deben versionarse, ni siquiera siendo autofirmados de demo)
+src/main/resources/certs/*.p12
+src/main/resources/certs/*.crt
+src/main/resources/certs/*.jks
