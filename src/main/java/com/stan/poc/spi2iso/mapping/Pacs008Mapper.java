@@ -50,11 +50,22 @@ import java.util.UUID;
  *   fechaHora                           -> IntrBkSttlmDt (fecha) y GrpHdr/CreDtTm del mensaje contenedor
  *
  * El SPI1 de este PoC no modela dos campos que el esquema real exige siempre:
- * ChrgBr (reparto de comisiones) y SttlmMtd (metodo de liquidacion). Se fijan a un
- * valor constante razonable (SLEV = cargos compartidos, CLRG = clearing) - ver README.
+ * ChrgBr (reparto de comisiones) y SttlmMtd (metodo de liquidacion), ni un catalogo
+ * oficial para el tipo de identificacion (Dbtr/Cdtr SchmeNm/Prtry). Estos tres son
+ * supuestos razonados, no una especificacion del BCE (ver README, "Alcance, fuentes
+ * y supuestos" #3 y #4) - por eso NO estan hardcodeados aqui: vienen de
+ * {@link Pacs008MappingProperties} (poc.mapping.pacs008.* en application.properties),
+ * para que ajustarlos cuando el BCE publique su especificacion sea un cambio de
+ * configuracion, no una reescritura de este mapper.
  */
 @Component
 public class Pacs008Mapper {
+
+    private final Pacs008MappingProperties mappingConfig;
+
+    public Pacs008Mapper(Pacs008MappingProperties mappingConfig) {
+        this.mappingConfig = mappingConfig;
+    }
 
     public Document toPacs008(Spi1Record r) {
         var tx = new CreditTransferTransaction73();
@@ -73,7 +84,7 @@ public class Pacs008Mapper {
             tx.setIntrBkSttlmDt(XmlUtil.toXmlDate(r.getFechaHora().toLocalDate()));
         }
 
-        tx.setChrgBr(ChargeBearerType1Code.SLEV);
+        tx.setChrgBr(ChargeBearerType1Code.valueOf(mappingConfig.getChargeBearer()));
 
         tx.setInstgAgt(agente(r.getInstitucionOrdenanteCodigo(), r.getInstitucionOrdenanteNombre()));
         tx.setInstdAgt(agente(r.getInstitucionReceptoraCodigo(), r.getInstitucionReceptoraNombre()));
@@ -97,7 +108,7 @@ public class Pacs008Mapper {
         grpHdr.setCreDtTm(XmlUtil.toXmlDateTime(OffsetDateTime.now(ZoneOffset.UTC)));
         grpHdr.setNbOfTxs("1");
         var sttlm = new SettlementInstruction15();
-        sttlm.setSttlmMtd(SettlementMethod1Code.CLRG);
+        sttlm.setSttlmMtd(SettlementMethod1Code.valueOf(mappingConfig.getSettlementMethod()));
         grpHdr.setSttlmInf(sttlm);
 
         var body = new FIToFICustomerCreditTransferV14();
@@ -128,7 +139,7 @@ public class Pacs008Mapper {
 
         if (id != null && !id.isBlank()) {
             var schemeName = new PersonIdentificationSchemeName1Choice();
-            schemeName.setPrtry(tipoId); // CI | CE | RUC | PASS
+            schemeName.setPrtry(mappingConfig.translateIdentificationType(tipoId)); // CI | CE | RUC | PASS -> poc.mapping.pacs008.identification-types
 
             var generic = new GenericPersonIdentification2();
             generic.setId(id);

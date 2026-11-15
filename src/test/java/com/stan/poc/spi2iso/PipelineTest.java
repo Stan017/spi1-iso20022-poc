@@ -4,6 +4,7 @@ import com.stan.poc.spi2iso.gateway.SwitchGatewaySimulator;
 import com.stan.poc.spi2iso.jaxb.XmlUtil;
 import com.stan.poc.spi2iso.jaxb.generated.pacs008.Document;
 import com.stan.poc.spi2iso.mapping.Pacs008Mapper;
+import com.stan.poc.spi2iso.mapping.Pacs008MappingProperties;
 import com.stan.poc.spi2iso.model.Spi1Record;
 import com.stan.poc.spi2iso.parser.Spi1Parser;
 import com.stan.poc.spi2iso.validation.Pacs008Validator;
@@ -22,7 +23,7 @@ class PipelineTest {
 
     private final Spi1Parser parser = new Spi1Parser();
     private final Pacs008Validator validator = new Pacs008Validator();
-    private final Pacs008Mapper mapper = new Pacs008Mapper();
+    private final Pacs008Mapper mapper = new Pacs008Mapper(new Pacs008MappingProperties());
     private final SwitchGatewaySimulator gateway = new SwitchGatewaySimulator();
 
     private static final String LINEA_VALIDA =
